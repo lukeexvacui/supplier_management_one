@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -18,51 +18,73 @@ const columnHelper = createColumnHelper<Supplier>();
 
 export function SupplierList() {
   const navigate = useNavigate();
-  const { suppliers, addSupplier, updateSupplier } = useStore();
+  const { suppliers, addSupplier, updateSupplier, loadInitialData } = useStore();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleSubmit = (data: Partial<Supplier>) => {
-    if (selectedSupplier) {
-      // Update existing supplier
-      updateSupplier({
-        ...selectedSupplier,
-        ...data,
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      // Add new supplier
-      const newSupplier: Supplier = {
-        id: crypto.randomUUID(),
-        ...data,
-        category: 'Novo',
-        averageRating: 0,
-        lastEvaluation: '-',
-        status: 'active',
-        metrics: {
-          deliveryRate: 100,
-          nonConformityRate: 0,
-          npsScore: 0,
-          responseTime: 0,
-          qualityScore: 0,
-          lastUpdated: new Date().toISOString(),
-          historicalData: [],
-          positiveEvaluations: 0,
-          negativeEvaluations: 0,
-          totalEvaluations: 0,
-        },
-        nonConformities: [],
-        recommendations: [],
-        customFields: {},
-        documents: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as Supplier;
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        await loadInitialData();
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      addSupplier(newSupplier);
+    initializeData();
+  }, [loadInitialData]);
+
+  const handleSubmit = async (data: Partial<Supplier>) => {
+    try {
+      if (selectedSupplier) {
+        // Update existing supplier
+        await updateSupplier({
+          ...selectedSupplier,
+          ...data,
+          updatedAt: new Date().toISOString(),
+        });
+      } else {
+        // Add new supplier
+        const newSupplier: Supplier = {
+          id: crypto.randomUUID(),
+          ...data,
+          category: 'Novo',
+          averageRating: 0,
+          lastEvaluation: '-',
+          status: 'active',
+          metrics: {
+            deliveryRate: 100,
+            nonConformityRate: 0,
+            npsScore: 0,
+            responseTime: 0,
+            qualityScore: 0,
+            lastUpdated: new Date().toISOString(),
+            historicalData: [],
+            positiveEvaluations: 0,
+            negativeEvaluations: 0,
+            totalEvaluations: 0,
+          },
+          nonConformities: [],
+          recommendations: [],
+          customFields: {},
+          documents: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as Supplier;
+
+        await addSupplier(newSupplier);
+      }
+      setShowForm(false);
+      setSelectedSupplier(null);
+    } catch (error) {
+      console.error('Erro ao salvar fornecedor:', error);
+      // Aqui você pode adicionar uma notificação de erro para o usuário
     }
   };
 
@@ -206,6 +228,14 @@ export function SupplierList() {
     () => ['all', ...new Set(suppliers.map((s) => s.category))],
     [suppliers]
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
