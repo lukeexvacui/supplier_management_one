@@ -10,14 +10,14 @@ interface StoreState {
   evaluations: Evaluation[];
   columnMappings: Record<string, string>;
   setSuppliers: (suppliers: Supplier[]) => void;
-  addSupplier: (supplier: Supplier) => Promise<void>;
-  addSuppliers: (suppliers: Supplier[]) => void;
+  addSupplier: (supplier: Omit<Supplier, 'id'>) => Promise<void>;
+  addSuppliers: (suppliers: Omit<Supplier, 'id'>[]) => Promise<void>;
   updateSupplier: (supplier: Supplier) => Promise<void>;
   deleteSupplier: (id: string) => Promise<void>;
-  addEvaluation: (evaluation: Evaluation) => Promise<void>;
+  addEvaluation: (evaluation: Omit<Evaluation, 'id'>) => Promise<void>;
   updateEvaluation: (evaluation: Evaluation) => Promise<void>;
   deleteEvaluation: (id: string) => Promise<void>;
-  addNonConformity: (nonConformity: NonConformity) => Promise<void>;
+  addNonConformity: (nonConformity: Omit<NonConformity, 'id'>) => Promise<void>;
   updateNonConformity: (nonConformity: NonConformity) => Promise<void>;
   setColumnMappings: (mappings: Record<string, string>) => void;
   linkGoogleSheet: (supplierId: string, sheetUrl: string) => Promise<void>;
@@ -43,10 +43,20 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
   
-  addSuppliers: (newSuppliers) =>
-    set((state) => ({
-      suppliers: [...state.suppliers, ...newSuppliers],
-    })),
+  addSuppliers: async (suppliers) => {
+    try {
+      const newSuppliers = await Promise.all(
+        suppliers.map(supplier => supplierService.createSupplier(supplier))
+      );
+      
+      set((state) => ({
+        suppliers: [...state.suppliers, ...newSuppliers],
+      }));
+    } catch (error) {
+      console.error('Erro ao adicionar fornecedores:', error);
+      throw error;
+    }
+  },
   
   updateSupplier: async (supplier) => {
     try {
@@ -88,7 +98,10 @@ export const useStore = create<StoreState>((set, get) => ({
   
   updateEvaluation: async (evaluation) => {
     try {
-      const updatedEvaluation = await evaluationService.updateEvaluation(evaluation.id, evaluation);
+      const updatedEvaluation = await evaluationService.updateEvaluation(
+        evaluation.id,
+        evaluation
+      );
       set((state) => ({
         evaluations: state.evaluations.map((e) =>
           e.id === updatedEvaluation.id ? updatedEvaluation : e
@@ -114,15 +127,17 @@ export const useStore = create<StoreState>((set, get) => ({
 
   addNonConformity: async (nonConformity) => {
     try {
-      const newNonConformity = await nonConformityService.createNonConformity(nonConformity);
+      const newNonConformity = await nonConformityService.createNonConformity(
+        nonConformity
+      );
       set((state) => ({
-        suppliers: state.suppliers.map((supplier) =>
-          supplier.id === nonConformity.supplierId
+        suppliers: state.suppliers.map((s) =>
+          s.id === newNonConformity.supplierId
             ? {
-                ...supplier,
-                nonConformities: [...supplier.nonConformities, newNonConformity],
+                ...s,
+                nonConformities: [...s.nonConformities, newNonConformity],
               }
-            : supplier
+            : s
         ),
       }));
     } catch (error) {
@@ -133,17 +148,20 @@ export const useStore = create<StoreState>((set, get) => ({
 
   updateNonConformity: async (nonConformity) => {
     try {
-      const updatedNonConformity = await nonConformityService.updateNonConformity(nonConformity.id, nonConformity);
+      const updatedNonConformity = await nonConformityService.updateNonConformity(
+        nonConformity.id,
+        nonConformity
+      );
       set((state) => ({
-        suppliers: state.suppliers.map((supplier) =>
-          supplier.id === nonConformity.supplierId
+        suppliers: state.suppliers.map((s) =>
+          s.id === updatedNonConformity.supplierId
             ? {
-                ...supplier,
-                nonConformities: supplier.nonConformities.map((nc) =>
-                  nc.id === updatedNonConformity.id ? updatedNonConformity : nc
+                ...s,
+                nonConformities: s.nonConformities.map((n) =>
+                  n.id === updatedNonConformity.id ? updatedNonConformity : n
                 ),
               }
-            : supplier
+            : s
         ),
       }));
     } catch (error) {
@@ -166,8 +184,15 @@ export const useStore = create<StoreState>((set, get) => ({
 
   loadInitialData: async () => {
     try {
-      const suppliers = await supplierService.getAllSuppliers();
-      set({ suppliers });
+      const [suppliers, evaluations] = await Promise.all([
+        supplierService.getAllSuppliers(),
+        evaluationService.getAllEvaluations(),
+      ]);
+
+      set({
+        suppliers,
+        evaluations,
+      });
     } catch (error) {
       console.error('Erro ao carregar dados iniciais:', error);
       throw error;

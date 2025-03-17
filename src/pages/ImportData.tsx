@@ -21,13 +21,17 @@ interface ColumnMapping {
 
 const REQUIRED_FIELDS = [
   { field: 'name', label: 'Nome' },
+  { field: 'legal_name', label: 'Razão Social' },
+  { field: 'document_number', label: 'CNPJ' },
   { field: 'email', label: 'Email' },
   { field: 'category', label: 'Categoria' },
 ];
 
 const OPTIONAL_FIELDS = [
   { field: 'phone', label: 'Telefone' },
+  { field: 'whatsapp', label: 'WhatsApp' },
   { field: 'address', label: 'Endereço' },
+  { field: 'location_url', label: 'URL de Localização' },
   { field: 'status', label: 'Status' },
 ];
 
@@ -108,42 +112,61 @@ export function ImportData() {
     setColumnMappings({ ...columnMappings, [sourceColumn]: targetField });
   };
 
-  const handleImport = () => {
-    const mappingErrors = validateMappings();
-    if (mappingErrors.length > 0) {
-      setErrors(mappingErrors);
-      return;
-    }
+  const handleImport = async () => {
+    try {
+      setErrors([]);
+      const mappingErrors = validateMappings();
+      if (mappingErrors.length > 0) {
+        setErrors(mappingErrors);
+        return;
+      }
 
-    const suppliers: Supplier[] = previewData.map((row) => {
-      const supplier: any = {
-        id: crypto.randomUUID(),
-        averageRating: 0,
-        lastEvaluation: '-',
-        metrics: {
-          deliveryRate: 100,
-          nonConformityRate: 0,
-          npsScore: 0,
-          responseTime: 0,
-          qualityScore: 0,
-          lastUpdated: new Date().toISOString(),
-          historicalData: [],
-        },
-        nonConformities: [],
-        recommendations: [],
-      };
+      const suppliers: Omit<Supplier, 'id'>[] = previewData.map((row) => {
+        const supplier: any = {
+          name: '',
+          legal_name: '',
+          document_number: '',
+          email: '',
+          category: '',
+          phone: '',
+          whatsapp: '',
+          address: '',
+          location_url: '',
+          status: 'active',
+          average_rating: 0,
+          last_evaluation: null,
+          custom_fields: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
 
-      mappings.forEach((mapping) => {
-        if (mapping.targetField) {
-          supplier[mapping.targetField] = row[mapping.sourceColumn];
+        mappings.forEach((mapping) => {
+          if (mapping.targetField) {
+            supplier[mapping.targetField] = row[mapping.sourceColumn] || '';
+          }
+        });
+
+        // Garantir que campos obrigatórios não sejam vazios
+        if (!supplier.legal_name && supplier.name) {
+          supplier.legal_name = supplier.name;
         }
+        if (!supplier.document_number) {
+          supplier.document_number = 'Pendente';
+        }
+
+        return supplier;
       });
 
-      return supplier;
-    });
+      await addSuppliers(suppliers);
+      setStep('complete');
+    } catch (error) {
+      setErrors(['Erro ao importar fornecedores. Por favor, tente novamente.']);
+      console.error('Erro na importação:', error);
+    }
+  };
 
-    addSuppliers(suppliers);
-    setStep('complete');
+  const handleComplete = () => {
+    navigate('/suppliers');
   };
 
   return (
@@ -287,11 +310,11 @@ export function ImportData() {
           <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
           <h2 className="mt-4 text-lg font-medium">Importação Concluída</h2>
           <p className="mt-2 text-sm text-gray-500">
-            Os fornecedores foram importados com sucesso!
+            Os fornecedores foram importados com sucesso.
           </p>
           <button
-            onClick={() => navigate('/suppliers')}
-            className="mt-6 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
+            onClick={handleComplete}
+            className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Ver Fornecedores
           </button>

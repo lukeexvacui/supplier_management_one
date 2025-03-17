@@ -43,23 +43,24 @@ export function SupplierList() {
   const handleSubmit = async (data: Partial<Supplier>) => {
     try {
       if (selectedSupplier) {
-        // Update existing supplier
         await updateSupplier({
           ...selectedSupplier,
           ...data,
           updatedAt: new Date().toISOString(),
         });
       } else {
-        // Add new supplier
-        const newSupplier: Supplier = {
-          id: crypto.randomUUID(),
-          ...data,
+        const newSupplier: Omit<Supplier, 'id'> = {
+          name: data.name || '',
+          legalName: data.legalName || '',
+          documentNumber: data.documentNumber || '',
           category: 'Novo',
+          email: data.email || '',
+          phone: data.phone || '',
           averageRating: 0,
-          lastEvaluation: '-',
+          lastEvaluation: new Date().toISOString(),
           status: 'active',
           metrics: {
-            deliveryRate: 100,
+            deliveryRate: 0,
             nonConformityRate: 0,
             npsScore: 0,
             responseTime: 0,
@@ -76,7 +77,12 @@ export function SupplierList() {
           documents: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        } as Supplier;
+        };
+
+        // Adiciona campos opcionais apenas se existirem
+        if (data.whatsapp) newSupplier.whatsapp = data.whatsapp;
+        if (data.address) newSupplier.address = data.address;
+        if (data.locationUrl) newSupplier.locationUrl = data.locationUrl;
 
         await addSupplier(newSupplier);
       }
@@ -84,7 +90,6 @@ export function SupplierList() {
       setSelectedSupplier(null);
     } catch (error) {
       console.error('Erro ao salvar fornecedor:', error);
-      // Aqui você pode adicionar uma notificação de erro para o usuário
     }
   };
 
@@ -172,13 +177,15 @@ export function SupplierList() {
           const statusStyles = {
             active: 'bg-green-50 text-green-700',
             inactive: 'bg-gray-50 text-gray-700',
-            critical: 'bg-red-50 text-red-700',
+            blocked: 'bg-red-50 text-red-700',
+            temporarily_blocked: 'bg-yellow-50 text-yellow-700',
           };
 
           const statusLabels = {
             active: 'Ativo',
             inactive: 'Inativo',
-            critical: 'Crítico',
+            blocked: 'Bloqueado',
+            temporarily_blocked: 'Bloqueado Temporariamente',
           };
 
           return (

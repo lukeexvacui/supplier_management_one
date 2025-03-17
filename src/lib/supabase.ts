@@ -49,7 +49,13 @@ export type Evaluation = {
   supplier_id: string
   evaluator: string
   date: string
-  ratings: Record<string, any>
+  ratings: {
+    quality: number
+    price: number
+    delivery: number
+    communication: number
+    overall: number
+  }
   comments?: string
   type: string
   created_at: string
