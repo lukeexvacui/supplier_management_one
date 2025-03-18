@@ -40,15 +40,18 @@ function fromSupabase(supabaseSupplier: SupabaseSupplier): Supplier {
 
 // Função para converter para formato do Supabase
 function toSupabase(supplier: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>): Omit<SupabaseSupplier, 'id' | 'created_at' | 'updated_at'> {
+  // Garantir que campos obrigatórios não sejam nulos
   const supabaseSupplier: Omit<SupabaseSupplier, 'id' | 'created_at' | 'updated_at'> = {
-    name: supplier.name,
-    legal_name: supplier.legalName,
-    document_number: supplier.documentNumber,
-    category: supplier.category,
-    email: supplier.email,
-    phone: supplier.phone,
-    average_rating: supplier.averageRating,
-    status: supplier.status,
+    name: supplier.name || '',
+    legal_name: supplier.legalName || supplier.name || 'Não informado',
+    document_number: supplier.documentNumber || 'Não informado',
+    category: supplier.category || 'Outros',
+    email: supplier.email || '',
+    phone: supplier.phone || '',
+    average_rating: supplier.averageRating || 0,
+    status: supplier.status || 'active',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
   // Adiciona campos opcionais apenas se existirem

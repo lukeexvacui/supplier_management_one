@@ -1,4 +1,4 @@
-import type { Employee, Goal, Competency, Feedback } from '../types';
+import type { Employee, Goal, Competency, Feedback } from '../types'; // Importa tipos da aplicação
 
 export class GoogleSheetsService {
   async fetchEmployeeData(spreadsheetId: string): Promise<Employee[]> {
